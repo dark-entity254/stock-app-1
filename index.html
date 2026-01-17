@@ -3,77 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Stock Tracker</title>
+    <title>DIM3Z & DOZ3NZ Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #38bdf8; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
-        .container { background: var(--card); padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
-        input { width: 70%; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #334155; color: white; outline: none; }
-        button { padding: 12px 20px; border-radius: 8px; border: none; background: var(--accent); color: #0f172a; font-weight: bold; cursor: pointer; }
-        #stock-info { margin-top: 20px; text-align: center; }
-        .price { font-size: 2.5rem; font-weight: 800; color: var(--accent); margin: 10px 0; }
-        canvas { margin-top: 20px; max-height: 250px; }
+        :root {
+            --neon-green: #39ff14;
+            --neon-red: #ff3131;
+            --neon-cyan: #00ffff;
+            --gold: #ffd700;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: url('background.png') no-repeat center center fixed;
+            background-size: cover;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            overflow: hidden;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1;
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 2;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid var(--gold);
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 0 20px var(--gold);
+            text-align: center;
+        }
+
+        h1 { color: var(--gold); margin-bottom: 5px; font-size: 1.5rem; text-shadow: 0 0 10px var(--gold); }
+        h2 { color: white; margin-top: 0; font-size: 1rem; opacity: 0.8; }
+
+        .search-area { display: flex; gap: 10px; margin: 20px 0; }
+
+        input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--neon-cyan);
+            padding: 12px;
+            border-radius: 8px;
+            color: white;
+            outline: none;
+        }
+
+        button {
+            background: var(--gold);
+            color: black;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover { transform: scale(1.05); box-shadow: 0 0 15px var(--gold); }
+
+        .price-box { margin: 20px 0; }
+        .price { font-size: 3rem; font-weight: bold; color: var(--neon-green); text-shadow: 0 0 10px var(--neon-green); }
+        
+        /* NEW CLOCK STYLE */
+        #clock {
+            margin-top: 25px;
+            font-size: 1.8rem;
+            font-family: 'Courier New', Courier, monospace;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 15px var(--neon-cyan);
+            font-weight: bold;
+            letter-spacing: 3px;
+        }
+
+        canvas { margin-top: 20px; filter: drop-shadow(0 0 5px var(--neon-cyan)); }
     </style>
 </head>
-<body>
+<body onload="startTime()">
 
-    <div class="container">
-        <h2>Stock Tracker</h2>
-        <div style="display:flex; gap:10px;">
-            <input type="text" id="symbol" placeholder="Enter Symbol (e.g. TSLA)">
-            <button onclick="fetchStock()">Track</button>
+    <div class="overlay"></div>
+
+    <div class="app-container">
+        <h1>DIM3Z & DOZ3NZ</h1>
+        <h2>EMMANUEL KING EDITION</h2>
+        
+        <div class="search-area">
+            <input type="text" id="ticker" placeholder="Enter Ticker (e.g. BTC)">
+            <button onclick="updateStock()">GET DATA</button>
         </div>
 
-        <div id="stock-info">
-            <h3 id="display-name">Enter a symbol above</h3>
-            <div id="display-price" class="price">--</div>
-            <p id="display-change">--</p>
+        <div class="price-box">
+            <div id="displaySymbol" style="color: var(--neon-cyan); letter-spacing: 2px;">MARKET READY</div>
+            <div class="price" id="displayPrice">$0.00</div>
         </div>
 
         <canvas id="stockChart"></canvas>
+
+        <div id="clock">00:00:00</div>
     </div>
 
     <script>
-        let myChart;
-        async function fetchStock() {
-            const symbol = document.getElementById('symbol').value.toUpperCase();
-            const apiKey = 'YOUR_API_KEY_HERE'; // <--- PASTE YOUR KEY HERE
-            const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`;
+        // LIVE CLOCK FUNCTION
+        function startTime() {
+            const today = new Date();
+            let h = today.getHours();
+            let m = today.getMinutes();
+            let s = today.getSeconds();
+            m = checkTime(m);
+            s = checkTime(s);
+            document.getElementById('clock').innerHTML = h + ":" + m + ":" + s;
+            setTimeout(startTime, 1000);
+        }
 
+        function checkTime(i) {
+            if (i < 10) {i = "0" + i};  // add zero in front of numbers < 10
+            return i;
+        }
+
+        let chart;
+        async function updateStock() {
+            const symbol = document.getElementById('ticker').value.toUpperCase();
+            const apiKey = 'YOUR_API_KEY'; // ADD YOUR KEY HERE
+            
             try {
-                const res = await fetch(url);
-                const data = await res.json();
+                const response = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`);
+                const data = await response.json();
                 
                 const timeSeries = data['Time Series (Daily)'];
                 const dates = Object.keys(timeSeries).slice(0, 7).reverse();
-                const prices = dates.map(date => parseFloat(timeSeries[date]['4. close']));
+                const prices = dates.map(d => parseFloat(timeSeries[d]['4. close']));
 
-                // Update UI
-                document.getElementById('display-name').innerText = symbol;
-                document.getElementById('display-price').innerText = `$${prices[prices.length - 1].toFixed(2)}`;
+                document.getElementById('displaySymbol').innerText = symbol;
+                document.getElementById('displayPrice').innerText = `$${prices[prices.length - 1].toFixed(2)}`;
                 
-                updateChart(dates, prices);
-            } catch (err) {
-                alert("Error: Check your symbol or API limit.");
+                renderChart(dates, prices);
+            } catch (e) {
+                alert("Check ticker or API limit.");
             }
         }
 
-        function updateChart(labels, data) {
+        function renderChart(labels, data) {
             const ctx = document.getElementById('stockChart').getContext('2d');
-            if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, {
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: labels.map(d => d.split('-').slice(1).join('/')),
                     datasets: [{
-                        label: 'Price (7 Days)',
                         data: data,
-                        borderColor: '#38bdf8',
-                        tension: 0.3,
-                        fill: true,
-                        backgroundColor: 'rgba(56, 189, 248, 0.1)'
+                        borderColor: '#00ffff',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0.4
                     }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#00ffff' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#00ffff' } }
+                    }
                 }
             });
         }

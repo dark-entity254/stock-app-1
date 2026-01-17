@@ -1,217 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  }
-</script>
-    let alertTarget = null;
-
-async function enableNotifications() {
-    const permission = await Notification.requestPermission();
-    if (permission === "granted") {
-        alertTarget = parseFloat(document.getElementById('alertPrice').value);
-        document.getElementById('notifyBtn').innerText = "ALERT ACTIVE: $" + alertTarget;
-        document.getElementById('notifyBtn').style.background = "#39ff14";
-        
-        // Start watching the price
-        startPriceWatcher();
-    } else {
-        alert("Permission denied. Enable notifications in your browser settings.");
-    }
-}
-
-function startPriceWatcher() {
-    // Check every 30 seconds
-    setInterval(async () => {
-        if (!alertTarget) return;
-
-        const symbol = document.getElementById('ticker').value.toUpperCase();
-        if (!symbol) return;
-
-        const apiKey = 'YOUR_API_KEY';
-        const res = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`);
-        const data = await res.json();
-        const currentPrice = parseFloat(data['Global Quote']['05. price']);
-
-        if (currentPrice >= alertTarget) {
-            sendNotification(symbol, currentPrice);
-            alertTarget = null; // Reset after alert
-            document.getElementById('notifyBtn').innerText = "SET ALERT";
-            document.getElementById('notifyBtn').style.background = "var(--gold)";
-        }
-    }, 30000); 
-}
-
-function sendNotification(symbol, price) {
-    if (Notification.permission === "granted") {
-        navigator.serviceWorker.ready.then(registration => {
-            registration.showNotification(`TRADING ALERT: ${symbol}`, {
-                body: `Target Hit! Current Price: $${price.toFixed(2)}`,
-                icon: 'icon.png'
-            });
-        });
-    }
-}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DIM3Z & DOZ3NZ - Trader Pro</title>
+    <title>DIM3Z & DOZ3NZ - Secure Terminal</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
-        :root { --neon-green: #39ff14; --neon-red: #ff3131; --neon-cyan: #00ffff; --gold: #ffd700; --bg: #0a0f1a; }
-        body {
-            margin: 0; padding: 20px; background: url('background.png') no-repeat center center fixed;
-            background-size: cover; color: white; font-family: 'Inter', sans-serif;
-            display: flex; justify-content: center;
+        :root { --neon-green: #39ff14; --gold: #ffd700; --bg: #0a0f1a; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        
+        /* Auth Overlay */
+        #auth-screen {
+            position: fixed; inset: 0; background: rgba(10,15,26,0.98); 
+            z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 15, 26, 0.85); z-index: -1; }
-        .app-container { width: 100%; max-width: 500px; z-index: 10; }
+        .auth-card { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 15px; border: 1px solid var(--gold); width: 85%; max-width: 350px; }
         
-        /* Header */
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { color: var(--gold); margin: 0; text-shadow: 0 0 10px var(--gold); font-size: 1.6rem; }
-        .header p { color: var(--neon-cyan); margin: 5px 0; font-size: 0.8rem; letter-spacing: 2px; }
+        /* Terminal UI */
+        .app-container { filter: blur(10px); transition: 0.5s; padding: 20px; }
+        .logged-in .app-container { filter: blur(0); }
+        .hidden { display: none !important; }
 
-        /* Search */
-        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-        input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--neon-cyan); padding: 12px; border-radius: 8px; color: white; }
-        button { background: var(--gold); border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-
-        /* Main Display */
-        .main-display { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,215,0,0.3); margin-bottom: 20px; }
-        .price { font-size: 3.5rem; font-weight: 800; color: var(--neon-green); text-align: center; margin: 10px 0; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #1a2233; border: 1px solid #334155; color: white; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; background: var(--gold); transition: 0.3s; }
+        .secondary-btn { background: transparent; color: var(--gold); border: 1px solid var(--gold); margin-top: 10px; }
         
-        /* Intelligence Panel */
-        .intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .intel-card { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 10px; border-left: 3px solid var(--neon-cyan); }
-        .intel-card small { color: #94a3b8; font-size: 0.7rem; display: block; margin-bottom: 5px; }
-        .intel-card span { font-size: 1.1rem; font-weight: bold; color: white; }
-        .signal-buy { color: var(--neon-green) !important; }
-        .signal-sell { color: var(--neon-red) !important; }
-
-        #clock { text-align: center; margin-top: 20px; font-family: monospace; color: var(--neon-cyan); font-size: 1.2rem; }
+        #user-bar { display: flex; justify-content: space-between; padding: 10px; font-size: 0.8rem; color: var(--gold); }
     </style>
 </head>
 <body>
-    <div class="overlay"></div>
-    <div class="app-container">
-        <div class="header">
-            <h1>DIM3Z & DOZ3NZ</h1>
-            <p>EMMANUEL KING TERMINAL</p>
-        </div>
 
-        <div class="search-box">
-            <input type="text" id="ticker" placeholder="ENTER SYMBOL (e.g. TSLA)">
-            <button onclick="updateTerminal()">ANALYZER</button>
+    <div id="auth-screen">
+        <div class="auth-card">
+            <h2 style="text-align: center; color: var(--gold);">D3Z ACCESS</h2>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="handleAuth('signin')">LOGIN</button>
+            <button class="secondary-btn" onclick="handleAuth('signup')">CREATE ACCOUNT</button>
         </div>
-
-        <div class="main-display">
-            <div id="symbolName" style="text-align:center; color: var(--gold);">SECURE LINE IDLE</div>
-            <div class="price" id="currentPrice">$0.00</div>
-            <canvas id="traderChart"></canvas>
-        </div>
-
-        <div class="intel-grid">
-            <div class="intel-card">
-                <small>7-DAY MOMENTUM (RSI)</small>
-                <span id="rsiValue">--</span>
-            </div>
-            <div class="intel-card">
-                <small>VOLATILITY INDEX</small>
-                <span id="volatility">--</span>
-            </div>
-            <div class="intel-card">
-                <small>SMA (MOVING AVG)</small>
-                <span id="smaValue">--</span>
-            </div>
-            <div class="intel-card">
-                <small>MARKET SIGNAL</small>
-                <span id="tradeSignal">WAITING...</span>
-            </div>
-        </div>
-        <div class="intel-card" style="grid-column: span 2; border-left: 3px solid var(--gold);">
-    <small>SET PRICE ALERT</small>
-    <div style="display: flex; gap: 10px; margin-top: 5px;">
-        <input type="number" id="alertPrice" placeholder="Target Price" style="padding: 5px;">
-        <button onclick="enableNotifications()" id="notifyBtn" style="padding: 5px 10px; font-size: 0.7rem;">SET ALERT</button>
     </div>
-</div>
 
-        <div id="clock">00:00:00</div>
+    <div id="main-content" class="hidden">
+        <div id="user-bar">
+            <span id="user-email"></span>
+            <span onclick="logout()" style="cursor:pointer">[ LOGOUT ]</span>
+        </div>
+        
+        <div class="app-container">
+            <h1 style="text-align:center; color: var(--gold);">DIM3Z TERMINAL</h1>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="ticker" placeholder="SYMBOL">
+                <button style="width: 80px;" onclick="updateTerminal()">GO</button>
+            </div>
+            <canvas id="traderChart" style="margin-top: 20px;"></canvas>
+            </div>
     </div>
 
     <script>
-        function updateClock() {
-            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
-            setTimeout(updateClock, 1000);
-        }
-        updateClock();
+        // REPLACE WITH YOUR FIREBASE CONFIG
+        const firebaseConfig = {
+            // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-        let chart;
-        async function updateTerminal() {
-            const symbol = document.getElementById('ticker').value.toUpperCase();
-            const apiKey = 'YOUR_API_KEY'; // ENTER YOUR KEY HERE
-            
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAgiu-mJecT8FdmGnHuc0bHiMHRcWoHmjk",
+  authDomain: "d3z-terminal.firebaseapp.com",
+  projectId: "d3z-terminal",
+  storageBucket: "d3z-terminal.firebasestorage.app",
+  messagingSenderId: "805005494085",
+  appId: "1:805005494085:web:42ff58007357e67bf9202c",
+  measurementId: "G-JX0C1GV372"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            appId: "YOUR_APP_ID"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // AUTH LOGIC
+        async function handleAuth(type) {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
             try {
-                const res = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`);
-                const data = await res.json();
-                const ts = data['Time Series (Daily)'];
-                const dates = Object.keys(ts).slice(0, 14).reverse();
-                const prices = dates.map(d => parseFloat(ts[d]['4. close']));
-                
-                // DATA CALCULATIONS
-                const latestPrice = prices[prices.length - 1];
-                const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
-                const rsi = ((latestPrice / prices[0]) * 50).toFixed(2); // Simplified RSI
-                const volt = (Math.max(...prices) - Math.min(...prices)).toFixed(2);
-
-                // UI UPDATE
-                document.getElementById('symbolName').innerText = "LIVE ASSET: " + symbol;
-                document.getElementById('currentPrice').innerText = "$" + latestPrice.toFixed(2);
-                document.getElementById('rsiValue').innerText = rsi;
-                document.getElementById('volatility').innerText = "$" + volt;
-                document.getElementById('smaValue').innerText = "$" + avgPrice.toFixed(2);
-                
-                const signalEl = document.getElementById('tradeSignal');
-                if(rsi > 55) { signalEl.innerText = "OVERBOUGHT"; signalEl.className = "signal-sell"; }
-                else if(rsi < 45) { signalEl.innerText = "OVERSOLD (BUY)"; signalEl.className = "signal-buy"; }
-                else { signalEl.innerText = "NEUTRAL"; signalEl.className = ""; }
-
-                renderChart(dates, prices);
-            } catch (e) { alert("Check Connection or API Limit"); }
+                if (type === 'signup') await auth.createUserWithEmailAndPassword(email, pass);
+                else await auth.signInWithEmailAndPassword(email, pass);
+            } catch (e) { alert(e.message); }
         }
 
-        function renderChart(labels, data) {
-            const ctx = document.getElementById('traderChart').getContext('2d');
-            if(chart) chart.destroy();
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels.map(l => l.split('-').slice(1).join('/')),
-                    datasets: [{
-                        label: 'Price',
-                        data: data,
-                        borderColor: '#ffd700',
-                        borderWidth: 3,
-                        backgroundColor: 'rgba(57, 255, 20, 0.1)',
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { ticks: { color: '#00ffff' }, grid: { display: false } },
-                        y: { ticks: { color: '#00ffff' }, grid: { color: 'rgba(255,255,255,0.1)' } }
-                    }
-                }
-            });
-        }
+        function logout() { auth.signOut(); }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                document.body.classList.add('logged-in');
+                document.getElementById('user-email').innerText = user.email;
+            } else {
+                document.getElementById('auth-screen').classList.remove('hidden');
+                document.getElementById('main-content').classList.add('hidden');
+                document.body.classList.remove('logged-in');
+            }
+        });
+
+        // (Include your updateTerminal and renderChart functions here from the previous step)
     </script>
 </body>
 </html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stock Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #38bdf8; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .container { background: var(--card); padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        input { width: 70%; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #334155; color: white; outline: none; }
+        button { padding: 12px 20px; border-radius: 8px; border: none; background: var(--accent); color: #0f172a; font-weight: bold; cursor: pointer; }
+        #stock-info { margin-top: 20px; text-align: center; }
+        .price { font-size: 2.5rem; font-weight: 800; color: var(--accent); margin: 10px 0; }
+        canvas { margin-top: 20px; max-height: 250px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Stock Tracker</h2>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="symbol" placeholder="Enter Symbol (e.g. TSLA)">
+            <button onclick="fetchStock()">Track</button>
+        </div>
+
+        <div id="stock-info">
+            <h3 id="display-name">Enter a symbol above</h3>
+            <div id="display-price" class="price">--</div>
+            <p id="display-change">--</p>
+        </div>
+
+        <canvas id="stockChart"></canvas>
+    </div>
+
+    <script>
+        let myChart;
+        async function fetchStock() {
+            const symbol = document.getElementById('symbol').value.toUpperCase();
+            const apiKey = 'YOUR_API_KEY_HERE'; // <--- PASTE YOUR KEY HERE
+            const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                const timeSeries = data['Time Series (Daily)'];
+                const dates = Object.keys(timeSeries).slice(0, 7).reverse();
+                const prices = dates.map(date => parseFloat(timeSeries[date]['4. close']));
+
+                // Update UI
+                document.getElementById('display-name').innerText = symbol;
+                document.getElementById('display-price').innerText = `$${prices[prices.length - 1].toFixed(2)}`;
+                
+                updateChart(dates, prices);
+            } catch (err) {
+                alert("Error: Check your symbol or API limit.");
+            }
+        }
+
+        function updateChart(labels, data) {
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            if (myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Price (7 Days)',
+                        data: data,
+                        borderColor: '#38bdf8',
+                        tension: 0.3,
+                        fill: true,
+                        backgroundColor: 'rgba(56, 189, 248, 0.1)'
+                    }]
+                }
+            });
+        }
+    </script>
+</body>
+</html>

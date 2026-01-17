@@ -3,132 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DIM3Z & DOZ3NZ - Secure Terminal</title>
+    <title>D3Z Terminal - Risk Intelligence</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        :root { --neon-green: #39ff14; --gold: #ffd700; --bg: #0a0f1a; }
-        body { margin: 0; background: var(--bg); color: white; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        :root { --neon-green: #39ff14; --neon-red: #ff3131; --neon-cyan: #00ffff; --gold: #ffd700; --bg: #0a0f1a; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Inter', sans-serif; }
+        .app-container { max-width: 450px; margin: auto; padding: 20px; }
         
-        /* Auth Overlay */
-        #auth-screen {
-            position: fixed; inset: 0; background: rgba(10,15,26,0.98); 
-            z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        /* Risk Meter UI */
+        .risk-box {
+            background: rgba(255,255,255,0.03); border: 1px solid #334155;
+            border-radius: 12px; padding: 15px; margin-bottom: 20px; text-align: center;
         }
-        .auth-card { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 15px; border: 1px solid var(--gold); width: 85%; max-width: 350px; }
+        .meter-bg { width: 100%; height: 8px; background: #1e293b; border-radius: 10px; margin: 10px 0; overflow: hidden; }
+        #risk-fill { width: 0%; height: 100%; transition: 1s ease-in-out; }
         
-        /* Terminal UI */
-        .app-container { filter: blur(10px); transition: 0.5s; padding: 20px; }
-        .logged-in .app-container { filter: blur(0); }
-        .hidden { display: none !important; }
+        .total-equity-bar { background: rgba(255,215,0,0.05); border: 1px solid var(--gold); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; }
+        .total-val { font-size: 2.5rem; font-weight: 900; color: var(--gold); }
 
-        input { width: 100%; padding: 12px; margin: 10px 0; background: #1a2233; border: 1px solid #334155; color: white; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; background: var(--gold); transition: 0.3s; }
-        .secondary-btn { background: transparent; color: var(--gold); border: 1px solid var(--gold); margin-top: 10px; }
-        
-        #user-bar { display: flex; justify-content: space-between; padding: 10px; font-size: 0.8rem; color: var(--gold); }
+        .pl-card { background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 15px; margin: 15px 0; border: 1px solid rgba(255,215,0,0.3); }
+        input { width: 100%; padding: 12px; margin: 5px 0; background: rgba(255,255,255,0.07); border: 1px solid var(--neon-cyan); border-radius: 8px; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; background: var(--gold); color: black; }
     </style>
 </head>
 <body>
 
-    <div id="auth-screen">
-        <div class="auth-card">
-            <h2 style="text-align: center; color: var(--gold);">D3Z ACCESS</h2>
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="password" placeholder="Password">
-            <button onclick="handleAuth('signin')">LOGIN</button>
-            <button class="secondary-btn" onclick="handleAuth('signup')">CREATE ACCOUNT</button>
+    <div id="main-content" class="app-container">
+        <div class="total-equity-bar">
+            <small>TOTAL EQUITY</small>
+            <div id="grand-total" class="total-val">$0.00</div>
+            <div id="total-pl-combined" style="font-size: 0.8rem;">P&L: $0.00 (0.00%)</div>
         </div>
-    </div>
 
-    <div id="main-content" class="hidden">
-        <div id="user-bar">
-            <span id="user-email"></span>
-            <span onclick="logout()" style="cursor:pointer">[ LOGOUT ]</span>
+        <div class="risk-box">
+            <small id="risk-status">DIVERSIFICATION METER</small>
+            <div class="meter-bg"><div id="risk-fill"></div></div>
+            <div id="risk-alert" style="font-size: 0.7rem; color: #94a3b8;">Loading risk data...</div>
         </div>
-        
-        <div class="app-container">
-            <h1 style="text-align:center; color: var(--gold);">DIM3Z TERMINAL</h1>
-            <div style="display: flex; gap: 10px;">
+
+        <div class="pl-card">
+            <div style="display:flex; gap:8px;">
                 <input type="text" id="ticker" placeholder="SYMBOL">
-                <button style="width: 80px;" onclick="updateTerminal()">GO</button>
+                <button onclick="updateTerminal()" style="width:80px; margin:0;">GO</button>
             </div>
-            <canvas id="traderChart" style="margin-top: 20px;"></canvas>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <input type="number" id="buyPrice" placeholder="Buy $">
+                <input type="number" id="quantity" placeholder="Qty">
             </div>
+            <button onclick="savePosition()">SAVE TO PORTFOLIO</button>
+        </div>
+
+        <canvas id="traderChart"></canvas>
     </div>
 
     <script>
-        // REPLACE WITH YOUR FIREBASE CONFIG
-        const firebaseConfig = {
-            // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAgiu-mJecT8FdmGnHuc0bHiMHRcWoHmjk",
-  authDomain: "d3z-terminal.firebaseapp.com",
-  projectId: "d3z-terminal",
-  storageBucket: "d3z-terminal.firebasestorage.app",
-  messagingSenderId: "805005494085",
-  appId: "1:805005494085:web:42ff58007357e67bf9202c",
-  measurementId: "G-JX0C1GV372"
-};
-            // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAgiu-mJecT8FdmGnHuc0bHiMHRcWoHmjk",
-  authDomain: "d3z-terminal.firebaseapp.com",
-  projectId: "d3z-terminal",
-  storageBucket: "d3z-terminal.firebasestorage.app",
-  messagingSenderId: "805005494085",
-  appId: "1:805005494085:web:42ff58007357e67bf9202c",
-  measurementId: "G-JX0C1GV372"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT.appspot.com",
-            appId: "YOUR_APP_ID"
-        };
+        // CONFIG (Replace with your keys)
+        const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "...", storageBucket: "...", appId: "..." };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
+        const db = firebase.firestore();
 
-        // AUTH LOGIC
-        async function handleAuth(type) {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('password').value;
-            try {
-                if (type === 'signup') await auth.createUserWithEmailAndPassword(email, pass);
-                else await auth.signInWithEmailAndPassword(email, pass);
-            } catch (e) { alert(e.message); }
+        async function loadPortfolio() {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            let totalInvested = 0;
+            let totalCurrentValue = 0;
+            let maxHoldingVal = 0;
+            let maxHoldingSymbol = "";
+
+            const snap = await db.collection('portfolio').doc(user.uid).collection('trades').get();
+            
+            for (const doc of snap.docs) {
+                const data = doc.data();
+                const price = await fetchPrice(data.symbol); // Your API call
+                
+                const currentVal = price * data.qty;
+                const costBasis = data.buyPrice * data.qty;
+                
+                totalInvested += costBasis;
+                totalCurrentValue += currentVal;
+
+                if (currentVal > maxHoldingVal) {
+                    maxHoldingVal = currentVal;
+                    maxHoldingSymbol = data.symbol;
+                }
+            }
+
+            updateRiskMeter(totalCurrentValue, maxHoldingVal, maxHoldingSymbol);
+            updateSummaryUI(totalInvested, totalCurrentValue);
         }
 
-        function logout() { auth.signOut(); }
+        function updateRiskMeter(total, maxVal, symbol) {
+            const concentration = total > 0 ? (maxVal / total) * 100 : 0;
+            const fill = document.getElementById('risk-fill');
+            const status = document.getElementById('risk-status');
+            const alertBox = document.getElementById('risk-alert');
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('auth-screen').classList.add('hidden');
-                document.getElementById('main-content').classList.remove('hidden');
-                document.body.classList.add('logged-in');
-                document.getElementById('user-email').innerText = user.email;
+            fill.style.width = concentration + "%";
+            
+            if (concentration > 40) {
+                fill.style.backgroundColor = "var(--neon-red)";
+                status.innerText = "HIGH CONCENTRATION RISK";
+                alertBox.innerText = `WARNING: ${symbol} makes up ${concentration.toFixed(1)}% of your portfolio. Consider diversifying.`;
+            } else if (concentration > 20) {
+                fill.style.backgroundColor = "var(--gold)";
+                status.innerText = "MODERATE CONCENTRATION";
+                alertBox.innerText = `${symbol} is your largest holding.`;
             } else {
-                document.getElementById('auth-screen').classList.remove('hidden');
-                document.getElementById('main-content').classList.add('hidden');
-                document.body.classList.remove('logged-in');
+                fill.style.backgroundColor = "var(--neon-green)";
+                status.innerText = "DIVERSIFIED PORTFOLIO";
+                alertBox.innerText = "Your assets are well-spread across your holdings.";
             }
-        });
+        }
 
-        // (Include your updateTerminal and renderChart functions here from the previous step)
+        async function fetchPrice(symbol) { return (Math.random() * 100) + 50; } // Replace with real API
+        function updateSummaryUI(invested, current) {
+            document.getElementById('grand-total').innerText = "$" + current.toLocaleString();
+        }
+        auth.onAuthStateChanged(user => { if(user) loadPortfolio(); });
     </script>
 </body>
 </html>

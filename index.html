@@ -10,6 +10,54 @@
     navigator.serviceWorker.register('sw.js');
   }
 </script>
+    let alertTarget = null;
+
+async function enableNotifications() {
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+        alertTarget = parseFloat(document.getElementById('alertPrice').value);
+        document.getElementById('notifyBtn').innerText = "ALERT ACTIVE: $" + alertTarget;
+        document.getElementById('notifyBtn').style.background = "#39ff14";
+        
+        // Start watching the price
+        startPriceWatcher();
+    } else {
+        alert("Permission denied. Enable notifications in your browser settings.");
+    }
+}
+
+function startPriceWatcher() {
+    // Check every 30 seconds
+    setInterval(async () => {
+        if (!alertTarget) return;
+
+        const symbol = document.getElementById('ticker').value.toUpperCase();
+        if (!symbol) return;
+
+        const apiKey = 'YOUR_API_KEY';
+        const res = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`);
+        const data = await res.json();
+        const currentPrice = parseFloat(data['Global Quote']['05. price']);
+
+        if (currentPrice >= alertTarget) {
+            sendNotification(symbol, currentPrice);
+            alertTarget = null; // Reset after alert
+            document.getElementById('notifyBtn').innerText = "SET ALERT";
+            document.getElementById('notifyBtn').style.background = "var(--gold)";
+        }
+    }, 30000); 
+}
+
+function sendNotification(symbol, price) {
+    if (Notification.permission === "granted") {
+        navigator.serviceWorker.ready.then(registration => {
+            registration.showNotification(`TRADING ALERT: ${symbol}`, {
+                body: `Target Hit! Current Price: $${price.toFixed(2)}`,
+                icon: 'icon.png'
+            });
+        });
+    }
+}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DIM3Z & DOZ3NZ - Trader Pro</title>

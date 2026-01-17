@@ -63,7 +63,14 @@
 
     <script>
         // CONFIG (Replace with your keys)
-        const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "...", storageBucket: "...", appId: "..." };
+        const firebaseConfig = {apiKey: "AIzaSyAgiu-mJecT8FdmGnHuc0bHiMHRcWoHmjk",
+  authDomain: "d3z-terminal.firebaseapp.com",
+  projectId: "d3z-terminal",
+  storageBucket: "d3z-terminal.firebasestorage.app",
+  messagingSenderId: "805005494085",
+  appId: "1:805005494085:web:42ff58007357e67bf9202c",
+  measurementId: "G-JX0C1GV372"
+            apiKey: "...", authDomain: "...", projectId: "...", storageBucket: "...", appId: "..." };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
@@ -127,6 +134,61 @@
             document.getElementById('grand-total').innerText = "$" + current.toLocaleString();
         }
         auth.onAuthStateChanged(user => { if(user) loadPortfolio(); });
+        // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAgiu-mJecT8FdmGnHuc0bHiMHRcWoHmjk",
+  authDomain: "d3z-terminal.firebaseapp.com",
+  projectId: "d3z-terminal",
+  storageBucket: "d3z-terminal.firebasestorage.app",
+  messagingSenderId: "805005494085",
+  appId: "1:805005494085:web:42ff58007357e67bf9202c",
+  measurementId: "G-JX0C1GV372"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+        <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyAgiu-mJecT8FdmGnHuc0bHiMHRcWoHmjk",
+    authDomain: "d3z-terminal.firebaseapp.com",
+    projectId: "d3z-terminal",
+    storageBucket: "d3z-terminal.firebasestorage.app",
+    messagingSenderId: "805005494085",
+    appId: "1:805005494085:web:42ff58007357e67bf9202c",
+    measurementId: "G-JX0C1GV372"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAgiu-mJecT8FdmGnHuc0bHiMHRcWoHmjk",
+  authDomain: "d3z-terminal.firebaseapp.com",
+  projectId: "d3z-terminal",
+  storageBucket: "d3z-terminal.firebasestorage.app",
+  messagingSenderId: "805005494085",
+  appId: "1:805005494085:web:42ff58007357e67bf9202c",
+  measurementId: "G-JX0C1GV372"
+};
+</script>
+    
     </script>
 </body>
 </html>

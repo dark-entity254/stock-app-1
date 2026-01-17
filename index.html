@@ -3,93 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DIM3Z & DOZ3NZ - 3D PRO</title>
-    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <title>DIM3Z & DOZ3NZ - Trader Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --neon-green: #39ff14; --neon-cyan: #00ffff; --gold: #ffd700; }
+        :root { --neon-green: #39ff14; --neon-red: #ff3131; --neon-cyan: #00ffff; --gold: #ffd700; --bg: #0a0f1a; }
         body {
-            margin: 0; padding: 0; background: url('background.png') no-repeat center center fixed;
-            background-size: cover; color: white; font-family: 'Segoe UI', sans-serif; height: 100vh;
-            overflow: hidden; display: flex; flex-direction: column; align-items: center;
+            margin: 0; padding: 20px; background: url('background.png') no-repeat center center fixed;
+            background-size: cover; color: white; font-family: 'Inter', sans-serif;
+            display: flex; justify-content: center;
         }
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1; }
-        .ui-layer { position: relative; z-index: 10; text-align: center; width: 100%; padding: 20px; }
-        h1 { color: var(--gold); text-shadow: 0 0 15px var(--gold); margin: 0; font-size: 1.8rem; letter-spacing: 3px; }
-        .search-row { margin: 15px 0; display: flex; justify-content: center; gap: 10px; }
-        input { background: rgba(0,0,0,0.7); border: 1px solid var(--neon-cyan); padding: 10px; color: white; border-radius: 4px; width: 140px; }
-        button { background: var(--gold); border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { box-shadow: 0 0 15px var(--gold); transform: scale(1.05); }
-        .big-price { font-size: 3.5rem; font-weight: 900; color: var(--neon-green); text-shadow: 0 0 20px var(--neon-green); margin: 5px 0; }
-        #chart-3d { position: absolute; bottom: 0; width: 100%; height: 65vh; z-index: 5; }
-        #clock { position: absolute; bottom: 20px; right: 20px; font-family: monospace; font-size: 1.4rem; color: var(--neon-cyan); text-shadow: 0 0 10px var(--neon-cyan); z-index: 10; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 15, 26, 0.85); z-index: -1; }
+        .app-container { width: 100%; max-width: 500px; z-index: 10; }
+        
+        /* Header */
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { color: var(--gold); margin: 0; text-shadow: 0 0 10px var(--gold); font-size: 1.6rem; }
+        .header p { color: var(--neon-cyan); margin: 5px 0; font-size: 0.8rem; letter-spacing: 2px; }
+
+        /* Search */
+        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--neon-cyan); padding: 12px; border-radius: 8px; color: white; }
+        button { background: var(--gold); border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+        /* Main Display */
+        .main-display { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,215,0,0.3); margin-bottom: 20px; }
+        .price { font-size: 3.5rem; font-weight: 800; color: var(--neon-green); text-align: center; margin: 10px 0; }
+        
+        /* Intelligence Panel */
+        .intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .intel-card { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 10px; border-left: 3px solid var(--neon-cyan); }
+        .intel-card small { color: #94a3b8; font-size: 0.7rem; display: block; margin-bottom: 5px; }
+        .intel-card span { font-size: 1.1rem; font-weight: bold; color: white; }
+        .signal-buy { color: var(--neon-green) !important; }
+        .signal-sell { color: var(--neon-red) !important; }
+
+        #clock { text-align: center; margin-top: 20px; font-family: monospace; color: var(--neon-cyan); font-size: 1.2rem; }
     </style>
 </head>
-<body onload="startTime()">
+<body>
     <div class="overlay"></div>
-    <div class="ui-layer">
-        <h1>DIM3Z & DOZ3NZ</h1>
-        <div class="search-row">
-            <input type="text" id="ticker" placeholder="SYMBOL (AAPL)">
-            <button onclick="fetch3D()">LOAD 3D AXIS</button>
+    <div class="app-container">
+        <div class="header">
+            <h1>DIM3Z & DOZ3NZ</h1>
+            <p>EMMANUEL KING TERMINAL</p>
         </div>
-        <div id="displaySymbol" style="color: var(--neon-cyan); font-weight: bold; font-size: 1.2rem;">DATA STREAM OFFLINE</div>
-        <div class="big-price" id="displayPrice">$0.00</div>
+
+        <div class="search-box">
+            <input type="text" id="ticker" placeholder="ENTER SYMBOL (e.g. TSLA)">
+            <button onclick="updateTerminal()">ANALYZER</button>
+        </div>
+
+        <div class="main-display">
+            <div id="symbolName" style="text-align:center; color: var(--gold);">SECURE LINE IDLE</div>
+            <div class="price" id="currentPrice">$0.00</div>
+            <canvas id="traderChart"></canvas>
+        </div>
+
+        <div class="intel-grid">
+            <div class="intel-card">
+                <small>7-DAY MOMENTUM (RSI)</small>
+                <span id="rsiValue">--</span>
+            </div>
+            <div class="intel-card">
+                <small>VOLATILITY INDEX</small>
+                <span id="volatility">--</span>
+            </div>
+            <div class="intel-card">
+                <small>SMA (MOVING AVG)</small>
+                <span id="smaValue">--</span>
+            </div>
+            <div class="intel-card">
+                <small>MARKET SIGNAL</small>
+                <span id="tradeSignal">WAITING...</span>
+            </div>
+        </div>
+
+        <div id="clock">00:00:00</div>
     </div>
-    <div id="chart-3d"></div>
-    <div id="clock">00:00:00</div>
 
     <script>
-        function startTime() {
-            document.getElementById('clock').innerHTML = new Date().toLocaleTimeString();
-            setTimeout(startTime, 1000);
+        function updateClock() {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+            setTimeout(updateClock, 1000);
         }
+        updateClock();
 
-        async function fetch3D() {
+        let chart;
+        async function updateTerminal() {
             const symbol = document.getElementById('ticker').value.toUpperCase();
-            const apiKey = 'YOUR_API_KEY'; 
+            const apiKey = 'YOUR_API_KEY'; // ENTER YOUR KEY HERE
+            
             try {
                 const res = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`);
                 const data = await res.json();
                 const ts = data['Time Series (Daily)'];
-                const dates = Object.keys(ts).slice(0, 20).reverse();
+                const dates = Object.keys(ts).slice(0, 14).reverse();
                 const prices = dates.map(d => parseFloat(ts[d]['4. close']));
+                
+                // DATA CALCULATIONS
+                const latestPrice = prices[prices.length - 1];
+                const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+                const rsi = ((latestPrice / prices[0]) * 50).toFixed(2); // Simplified RSI
+                const volt = (Math.max(...prices) - Math.min(...prices)).toFixed(2);
 
-                document.getElementById('displaySymbol').innerText = "LIVE SIGNAL: " + symbol;
-                document.getElementById('displayPrice').innerText = `$${prices[prices.length - 1].toFixed(2)}`;
-                render3DGrid(dates, prices);
-            } catch (e) { alert("API Error or Limit Reached."); }
+                // UI UPDATE
+                document.getElementById('symbolName').innerText = "LIVE ASSET: " + symbol;
+                document.getElementById('currentPrice').innerText = "$" + latestPrice.toFixed(2);
+                document.getElementById('rsiValue').innerText = rsi;
+                document.getElementById('volatility').innerText = "$" + volt;
+                document.getElementById('smaValue').innerText = "$" + avgPrice.toFixed(2);
+                
+                const signalEl = document.getElementById('tradeSignal');
+                if(rsi > 55) { signalEl.innerText = "OVERBOUGHT"; signalEl.className = "signal-sell"; }
+                else if(rsi < 45) { signalEl.innerText = "OVERSOLD (BUY)"; signalEl.className = "signal-buy"; }
+                else { signalEl.innerText = "NEUTRAL"; signalEl.className = ""; }
+
+                renderChart(dates, prices);
+            } catch (e) { alert("Check Connection or API Limit"); }
         }
 
-        function render3DGrid(dates, prices) {
-            // Generating multiple data rows to create a "ribbon" width on the Y-Axis
-            const zValues = [ prices, prices.map(p => p * 1.005), prices.map(p => p * 0.995) ];
-            const xLabels = dates.map(d => d.split('-').slice(1).join('/'));
-
-            const trace = {
-                z: zValues,
-                x: xLabels,
-                y: ['Low', 'Mid', 'High'],
-                type: 'surface',
-                colorscale: [[0, '#ff3131'], [0.5, '#00ffff'], [1, '#39ff14']],
-                showscale: false,
-                lighting: { ambient: 0.9, diffuse: 0.5, specular: 1, roughness: 0.1 }
-            };
-
-            const layout = {
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                margin: { l: 0, r: 0, b: 0, t: 0 },
-                scene: {
-                    aspectmode: 'manual',
-                    aspectratio: { x: 2, y: 1, z: 1 },
-                    xaxis: { title: 'DATE', color: '#00ffff', showgrid: true, zeroline: false, gridcolor: '#334155' },
-                    yaxis: { title: 'DEPTH', color: '#00ffff', showgrid: true, gridcolor: '#334155' },
-                    zaxis: { title: 'PRICE', color: '#ffd700', showgrid: true, gridcolor: '#334155' },
-                    camera: { eye: { x: 1.8, y: 1.8, z: 1.2 } }
+        function renderChart(labels, data) {
+            const ctx = document.getElementById('traderChart').getContext('2d');
+            if(chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.map(l => l.split('-').slice(1).join('/')),
+                    datasets: [{
+                        label: 'Price',
+                        data: data,
+                        borderColor: '#ffd700',
+                        borderWidth: 3,
+                        backgroundColor: 'rgba(57, 255, 20, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#00ffff' }, grid: { display: false } },
+                        y: { ticks: { color: '#00ffff' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    }
                 }
-            };
-
-            Plotly.newPlot('chart-3d', [trace], layout, {responsive: true, displayModeBar: false});
+            });
         }
     </script>
 </body>
